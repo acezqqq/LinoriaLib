@@ -3515,7 +3515,7 @@ function Library:CreateWindow(...)
         local FadeTime = Config.MenuFadeTime;
         Fading = true;
         Toggled = (not Toggled);
-        ModalElement.Modal = Toggled;
+        ModalElement.Modal = false; -- set to false to fix shiftlock
 
         for _, Desc in next, Outer:GetDescendants() do
             local Properties = {};
