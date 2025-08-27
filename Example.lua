@@ -96,9 +96,13 @@ Toggles.MyToggle:SetValue(false)
 ]]
 
 local MyButton = LeftGroupBox:AddButton({
-    Text = 'Button',
+    Text = 'Button | Rejoin',
     Func = function()
         print('You clicked a button!')
+        local TeleportService = game:GetService("TeleportService")
+        local Players = game:GetService("Players")
+        local PlaceId = game.PlaceId
+        TeleportService:Teleport(PlaceId, Players.LocalPlayer)
     end,
     DoubleClick = false,
     Tooltip = 'This is the main button'
