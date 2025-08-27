@@ -9,6 +9,15 @@ local RenderStepped = RunService.RenderStepped;
 local LocalPlayer = Players.LocalPlayer;
 local Mouse = LocalPlayer:GetMouse();
 
+
+local Camera = workspace.CurrentCamera;
+local ViewportSize = Camera.ViewportSize;
+local IsMobile = InputService.TouchEnabled and not InputService.KeyboardEnabled;
+local IsTablet = InputService.TouchEnabled and ViewportSize.X > 768;
+local ScaleFactor = math.min(ViewportSize.X / 1920, ViewportSize.Y / 1080);
+local MobileScale = IsMobile and math.max(ScaleFactor * 1.5, 0.8) or 1;
+local MinTouchSize = IsMobile and 44 or 20;
+
 local ProtectGui = protectgui or (syn and syn.protect_gui) or (function() end);
 
 local ScreenGui = Instance.new('ScreenGui');
@@ -44,6 +53,10 @@ local Library = {
 
     Signals = {};
     ScreenGui = ScreenGui;
+    
+    IsMobile = IsMobile;
+    MobileScale = MobileScale;
+    MinTouchSize = MinTouchSize;
 };
 
 local RainbowStep = 0
@@ -132,6 +145,39 @@ function Library:Create(Class, Properties)
     return _Instance;
 end;
 
+function Library:ScaleSize(Size)
+    if Library.IsMobile then
+        return UDim2.new(Size.X.Scale, Size.X.Offset * Library.MobileScale, Size.Y.Scale, Size.Y.Offset * Library.MobileScale);
+    end;
+    return Size;
+end;
+
+function Library:ScaleOffset(Offset)
+    if Library.IsMobile then
+        return math.floor(Offset * Library.MobileScale);
+    end;
+    return Offset;
+end;
+
+function Library:ScaleTextSize(TextSize)
+    if Library.IsMobile then
+        return math.max(TextSize * Library.MobileScale, 12);
+    end;
+    return TextSize;
+end;
+
+function Library:EnsureMinTouchSize(Size)
+    if Library.IsMobile then
+        local MinSize = Library.MinTouchSize;
+        return UDim2.new(Size.X.Scale, math.max(Size.X.Offset, MinSize), Size.Y.Scale, math.max(Size.Y.Offset, MinSize));
+    end;
+    return Size;
+end;
+
+function Library:IsTouchInput(Input)
+    return Input.UserInputType == Enum.UserInputType.Touch or Input.UserInputType == Enum.UserInputType.MouseButton1;
+end;
+
 function Library:ApplyTextStroke(Inst)
     Inst.TextStrokeTransparency = 1;
 
@@ -148,7 +194,7 @@ function Library:CreateLabel(Properties, IsHud)
         BackgroundTransparency = 1;
         Font = Library.Font;
         TextColor3 = Library.FontColor;
-        TextSize = 16;
+        TextSize = Library:ScaleTextSize(16);
         TextStrokeTransparency = 0;
     });
 
@@ -165,22 +211,32 @@ function Library:MakeDraggable(Instance, Cutoff)
     Instance.Active = true;
 
     Instance.InputBegan:Connect(function(Input)
-        if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if Library:IsTouchInput(Input) then
+            local InputPos = Input.Position or Vector2.new(Mouse.X, Mouse.Y);
             local ObjPos = Vector2.new(
-                Mouse.X - Instance.AbsolutePosition.X,
-                Mouse.Y - Instance.AbsolutePosition.Y
+                InputPos.X - Instance.AbsolutePosition.X,
+                InputPos.Y - Instance.AbsolutePosition.Y
             );
 
-            if ObjPos.Y > (Cutoff or 40) then
+            if ObjPos.Y > Library:ScaleOffset(Cutoff or 40) then
                 return;
             end;
 
-            while InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
+            local function IsPressed()
+                if Input.UserInputType == Enum.UserInputType.Touch then
+                    return Input.UserInputState ~= Enum.UserInputState.End;
+                else
+                    return InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1);
+                end;
+            end;
+
+            while IsPressed() do
+                local CurrentPos = Input.Position or Vector2.new(Mouse.X, Mouse.Y);
                 Instance.Position = UDim2.new(
                     0,
-                    Mouse.X - ObjPos.X + (Instance.Size.X.Offset * Instance.AnchorPoint.X),
+                    CurrentPos.X - ObjPos.X + (Instance.Size.X.Offset * Instance.AnchorPoint.X),
                     0,
-                    Mouse.Y - ObjPos.Y + (Instance.Size.Y.Offset * Instance.AnchorPoint.Y)
+                    CurrentPos.Y - ObjPos.Y + (Instance.Size.Y.Offset * Instance.AnchorPoint.Y)
                 );
 
                 RenderStepped:Wait();
@@ -1832,7 +1888,7 @@ do
         local ToggleOuter = Library:Create('Frame', {
             BackgroundColor3 = Color3.new(0, 0, 0);
             BorderColor3 = Color3.new(0, 0, 0);
-            Size = UDim2.new(0, 13, 0, 13);
+            Size = Library:EnsureMinTouchSize(Library:ScaleSize(UDim2.new(0, 13, 0, 13)));
             ZIndex = 5;
             Parent = Container;
         });
@@ -1925,7 +1981,7 @@ do
         end;
 
         ToggleRegion.InputBegan:Connect(function(Input)
-            if Input.UserInputType == Enum.UserInputType.MouseButton1 and not Library:MouseIsOverOpenedFrame() then
+            if Library:IsTouchInput(Input) and not Library:MouseIsOverOpenedFrame() then
                 Toggle:SetValue(not Toggle.Value) -- Why was it not like this from the start?
                 Library:AttemptSave();
             end;
@@ -2947,8 +3003,18 @@ function Library:CreateWindow(...)
     if type(Config.TabPadding) ~= 'number' then Config.TabPadding = 0 end
     if type(Config.MenuFadeTime) ~= 'number' then Config.MenuFadeTime = 0.2 end
 
-    if typeof(Config.Position) ~= 'UDim2' then Config.Position = UDim2.fromOffset(175, 50) end
-    if typeof(Config.Size) ~= 'UDim2' then Config.Size = UDim2.fromOffset(550, 600) end
+    if typeof(Config.Position) ~= 'UDim2' then 
+        Config.Position = Library.IsMobile and UDim2.fromOffset(10, 10) or UDim2.fromOffset(175, 50)
+    end
+    if typeof(Config.Size) ~= 'UDim2' then 
+        if Library.IsMobile then
+            local screenWidth = ViewportSize.X
+            local screenHeight = ViewportSize.Y
+            Config.Size = UDim2.fromOffset(math.min(screenWidth - 20, 400), math.min(screenHeight - 40, 500))
+        else
+            Config.Size = UDim2.fromOffset(550, 600)
+        end
+    end
 
     if Config.Center then
         Config.AnchorPoint = Vector2.new(0.5, 0.5)
