@@ -224,9 +224,11 @@ function Library:MakeDraggable(Instance, Cutoff)
             
             if ObjPos.Y <= (Cutoff or 40) then
                 allowDrag = true;
-            elseif ObjPos.Y >= instanceSize.Y - 20 and (ObjPos.X <= 20 or ObjPos.X >= instanceSize.X - 20) then
+            elseif ObjPos.Y >= instanceSize.Y - 10 then
                 allowDrag = true;
-            elseif (ObjPos.X <= 5 or ObjPos.X >= instanceSize.X - 5) and ObjPos.Y >= instanceSize.Y * 0.2 and ObjPos.Y <= instanceSize.Y * 0.8 then
+            elseif ObjPos.X <= 10 then
+                allowDrag = true;
+            elseif ObjPos.X >= instanceSize.X - 10 then
                 allowDrag = true;
             end;
 
@@ -262,9 +264,11 @@ function Library:MakeDraggable(Instance, Cutoff)
             
             if ObjPos.Y <= (Cutoff or 40) then
                 allowDrag = true;
-            elseif ObjPos.Y >= instanceSize.Y - 20 and (ObjPos.X <= 20 or ObjPos.X >= instanceSize.X - 20) then
+            elseif ObjPos.Y >= instanceSize.Y - 10 then
                 allowDrag = true;
-            elseif (ObjPos.X <= 5 or ObjPos.X >= instanceSize.X - 5) and ObjPos.Y >= instanceSize.Y * 0.2 and ObjPos.Y <= instanceSize.Y * 0.8 then
+            elseif ObjPos.X <= 10 then
+                allowDrag = true;
+            elseif ObjPos.X >= instanceSize.X - 10 then
                 allowDrag = true;
             end;
 
@@ -1040,8 +1044,23 @@ do
         end;
 
         SatVibMap.InputBegan:Connect(function(Input)
-            if Input.UserInputType == Enum.UserInputType.MouseButton1 then
-                while InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
+            if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+                local isTouch = Input.UserInputType == Enum.UserInputType.Touch
+                local isDragging = true
+                
+                local function stopDragging()
+                    isDragging = false
+                end
+                
+                if isTouch then
+                    local connection
+                    connection = InputService.TouchEnded:Connect(function()
+                        stopDragging()
+                        connection:Disconnect()
+                    end)
+                end
+                
+                while isDragging and ((not isTouch and InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1)) or isTouch) do
                     local MinX = SatVibMap.AbsolutePosition.X;
                     local MaxX = MinX + SatVibMap.AbsoluteSize.X;
                     local MouseX = math.clamp(Mouse.X, MinX, MaxX);
@@ -1062,7 +1081,7 @@ do
         end);
 
         HueSelectorInner.InputBegan:Connect(function(Input)
-            if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+            if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
                 while InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
                     local MinY = HueSelectorInner.AbsolutePosition.Y;
                     local MaxY = MinY + HueSelectorInner.AbsoluteSize.Y;
@@ -1079,7 +1098,7 @@ do
         end);
 
         DisplayFrame.InputBegan:Connect(function(Input)
-            if Input.UserInputType == Enum.UserInputType.MouseButton1 and not Library:MouseIsOverOpenedFrame() then
+            if (Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch) and not Library:MouseIsOverOpenedFrame() then
                 if PickerFrameOuter.Visible then
                     ColorPicker:Hide()
                 else
@@ -1094,8 +1113,9 @@ do
 
         if TransparencyBoxInner then
             TransparencyBoxInner.InputBegan:Connect(function(Input)
-                if Input.UserInputType == Enum.UserInputType.MouseButton1 then
-                    while InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
+                if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+                    local isTouch = Input.UserInputType == Enum.UserInputType.Touch
+                    while (not isTouch and InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1)) or (isTouch and InputService.TouchEnabled) do
                         local MinX = TransparencyBoxInner.AbsolutePosition.X;
                         local MaxX = MinX + TransparencyBoxInner.AbsoluteSize.X;
                         local MouseX = math.clamp(Mouse.X, MinX, MaxX);
@@ -2427,22 +2447,8 @@ do
         );
 
         if type(Info.Tooltip) == 'string' then
-            Library:AddToolTip(Info.Tooltip, DropdownOuter)
-        end
-
-        local MAX_DROPDOWN_ITEMS = 8;
-
-        local ListOuter = Library:Create('Frame', {
-            BackgroundColor3 = Color3.new(0, 0, 0);
-            BorderColor3 = Color3.new(0, 0, 0);
-            ZIndex = 20;
-            Visible = false;
-            Parent = ScreenGui;
-        });
-
-        local function RecalculateListPosition()
-            ListOuter.Position = UDim2.fromOffset(DropdownOuter.AbsolutePosition.X, DropdownOuter.AbsolutePosition.Y + DropdownOuter.Size.Y.Offset + 1);
         end;
+    end;
 
         local function RecalculateListSize(YSize)
             ListOuter.Size = UDim2.fromOffset(DropdownOuter.AbsoluteSize.X, YSize or (MAX_DROPDOWN_ITEMS * 20 + 2))
@@ -3635,7 +3641,7 @@ function Library:CreateWindow(...)
                 Tab:AddBlank(3);
                 Tab:Resize();
 
-                -- Show first tab (number is 2 cus of the UIListLayout that also sits in that instance)
+
                 if #TabboxButtons:GetChildren() == 2 then
                     Tab:Show();
                 end;
@@ -3656,13 +3662,35 @@ function Library:CreateWindow(...)
             return Tab:AddTabbox({ Name = Name, Side = 2; });
         end;
 
+        function Tab:ShowTab()
+            for _, OtherTab in next, Window.Tabs do
+                OtherTab:HideTab();
+            end;
+
+            Blocker.BackgroundTransparency = 0;
+            TabButton.BackgroundColor3 = Library.MainColor;
+            Library.RegistryMap[TabButton].Properties.BackgroundColor3 = 'MainColor';
+            TabFrame.Visible = true;
+        end;
+
+        function Tab:HideTab()
+            Blocker.BackgroundTransparency = 1;
+            TabButton.BackgroundColor3 = Library.BackgroundColor;
+            Library.RegistryMap[TabButton].Properties.BackgroundColor3 = 'BackgroundColor';
+            TabFrame.Visible = false;
+        end;
+
+        function Tab:SetLayoutOrder(Position)
+            TabButton.LayoutOrder = Position;
+            TabListLayout:ApplyLayout();
+        end;
+
         TabButton.InputBegan:Connect(function(Input)
-            if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+            if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
                 Tab:ShowTab();
             end;
         end);
 
-        -- This was the first tab added, so we show it by default.
         if #TabContainer:GetChildren() == 1 then
             Tab:ShowTab();
         end;
