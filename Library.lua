@@ -211,36 +211,62 @@ function Library:MakeDraggable(Instance, Cutoff)
     Instance.Active = true;
 
     Instance.InputBegan:Connect(function(Input)
-        if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
-            local InputPos = Input.Position or Vector2.new(Mouse.X, Mouse.Y);
+        if Input.UserInputType == Enum.UserInputType.MouseButton1 then
             local ObjPos = Vector2.new(
-                InputPos.X - Instance.AbsolutePosition.X,
-                InputPos.Y - Instance.AbsolutePosition.Y
+                Mouse.X - Instance.AbsolutePosition.X,
+                Mouse.Y - Instance.AbsolutePosition.Y
             );
 
-            if ObjPos.Y > Library:ScaleOffset(Cutoff or 40) then
+            if ObjPos.Y > (Cutoff or 40) then
                 return;
             end;
 
-            local function IsPressed()
-                if Input.UserInputType == Enum.UserInputType.Touch then
-                    return Input.UserInputState ~= Enum.UserInputState.End;
-                else
-                    return InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1);
-                end;
-            end;
-
-            while IsPressed() do
-                local CurrentPos = Input.Position or Vector2.new(Mouse.X, Mouse.Y);
+            while InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
                 Instance.Position = UDim2.new(
                     0,
-                    CurrentPos.X - ObjPos.X + (Instance.Size.X.Offset * Instance.AnchorPoint.X),
+                    Mouse.X - ObjPos.X + (Instance.Size.X.Offset * Instance.AnchorPoint.X),
                     0,
-                    CurrentPos.Y - ObjPos.Y + (Instance.Size.Y.Offset * Instance.AnchorPoint.Y)
+                    Mouse.Y - ObjPos.Y + (Instance.Size.Y.Offset * Instance.AnchorPoint.Y)
                 );
 
                 RenderStepped:Wait();
             end;
+        elseif Input.UserInputType == Enum.UserInputType.Touch then
+            local TouchPos = Input.Position;
+            local ObjPos = Vector2.new(
+                TouchPos.X - Instance.AbsolutePosition.X,
+                TouchPos.Y - Instance.AbsolutePosition.Y
+            );
+
+            if ObjPos.Y > (Cutoff or 40) then
+                return;
+            end;
+
+            local function UpdatePosition()
+                if Input.UserInputState ~= Enum.UserInputState.End then
+                    Instance.Position = UDim2.new(
+                        0,
+                        Input.Position.X - ObjPos.X + (Instance.Size.X.Offset * Instance.AnchorPoint.X),
+                        0,
+                        Input.Position.Y - ObjPos.Y + (Instance.Size.Y.Offset * Instance.AnchorPoint.Y)
+                    );
+                end;
+            end;
+
+            local connection;
+            connection = InputService.TouchMoved:Connect(function(touch, gameProcessed)
+                if touch == Input then
+                    UpdatePosition();
+                end;
+            end);
+
+            local endConnection;
+            endConnection = InputService.TouchEnded:Connect(function(touch, gameProcessed)
+                if touch == Input then
+                    connection:Disconnect();
+                    endConnection:Disconnect();
+                end;
+            end);
         end;
     end)
 end;
