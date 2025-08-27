@@ -57,6 +57,8 @@ local Library = {
     IsMobile = IsMobile;
     MobileScale = MobileScale;
     MinTouchSize = MinTouchSize;
+    
+    MainWindow = nil;
 };
 
 local RainbowStep = 0
@@ -217,18 +219,29 @@ function Library:MakeDraggable(Instance, Cutoff)
                 Mouse.Y - Instance.AbsolutePosition.Y
             );
 
-            if ObjPos.Y > (Cutoff or 40) then
+            local allowDrag = false;
+            local instanceSize = Instance.AbsoluteSize;
+            
+            if ObjPos.Y <= (Cutoff or 40) then
+                allowDrag = true;
+            elseif ObjPos.Y >= instanceSize.Y - 20 and (ObjPos.X <= 20 or ObjPos.X >= instanceSize.X - 20) then
+                allowDrag = true;
+            elseif (ObjPos.X <= 5 or ObjPos.X >= instanceSize.X - 5) and ObjPos.Y >= instanceSize.Y * 0.2 and ObjPos.Y <= instanceSize.Y * 0.8 then
+                allowDrag = true;
+            end;
+
+            if not allowDrag then
                 return;
             end;
 
             while InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
-                Instance.Position = UDim2.new(
-                    0,
-                    Mouse.X - ObjPos.X + (Instance.Size.X.Offset * Instance.AnchorPoint.X),
-                    0,
-                    Mouse.Y - ObjPos.Y + (Instance.Size.Y.Offset * Instance.AnchorPoint.Y)
-                );
-
+                local newX = Mouse.X - ObjPos.X + (Instance.Size.X.Offset * Instance.AnchorPoint.X);
+                local newY = Mouse.Y - ObjPos.Y + (Instance.Size.Y.Offset * Instance.AnchorPoint.Y);
+                
+                newX = math.clamp(newX, 0, ViewportSize.X - Instance.AbsoluteSize.X);
+                newY = math.clamp(newY, 0, ViewportSize.Y - Instance.AbsoluteSize.Y);
+                
+                Instance.Position = UDim2.new(0, newX, 0, newY);
                 RenderStepped:Wait();
             end;
         elseif Input.UserInputType == Enum.UserInputType.Touch then
@@ -238,18 +251,30 @@ function Library:MakeDraggable(Instance, Cutoff)
                 TouchPos.Y - Instance.AbsolutePosition.Y
             );
 
-            if ObjPos.Y > (Cutoff or 40) then
+            local allowDrag = false;
+            local instanceSize = Instance.AbsoluteSize;
+            
+            if ObjPos.Y <= (Cutoff or 40) then
+                allowDrag = true;
+            elseif ObjPos.Y >= instanceSize.Y - 20 and (ObjPos.X <= 20 or ObjPos.X >= instanceSize.X - 20) then
+                allowDrag = true;
+            elseif (ObjPos.X <= 5 or ObjPos.X >= instanceSize.X - 5) and ObjPos.Y >= instanceSize.Y * 0.2 and ObjPos.Y <= instanceSize.Y * 0.8 then
+                allowDrag = true;
+            end;
+
+            if not allowDrag then
                 return;
             end;
 
             local function UpdatePosition()
                 if Input.UserInputState ~= Enum.UserInputState.End then
-                    Instance.Position = UDim2.new(
-                        0,
-                        Input.Position.X - ObjPos.X + (Instance.Size.X.Offset * Instance.AnchorPoint.X),
-                        0,
-                        Input.Position.Y - ObjPos.Y + (Instance.Size.Y.Offset * Instance.AnchorPoint.Y)
-                    );
+                    local newX = Input.Position.X - ObjPos.X + (Instance.Size.X.Offset * Instance.AnchorPoint.X);
+                    local newY = Input.Position.Y - ObjPos.Y + (Instance.Size.Y.Offset * Instance.AnchorPoint.Y);
+                    
+                    newX = math.clamp(newX, 0, ViewportSize.X - Instance.AbsoluteSize.X);
+                    newY = math.clamp(newY, 0, ViewportSize.Y - Instance.AbsoluteSize.Y);
+                    
+                    Instance.Position = UDim2.new(0, newX, 0, newY);
                 end;
             end;
 
@@ -260,11 +285,11 @@ function Library:MakeDraggable(Instance, Cutoff)
                 end;
             end);
 
-            local endConnection;
-            endConnection = InputService.TouchEnded:Connect(function(touch, gameProcessed)
+            local touchEndConnection;
+            touchEndConnection = InputService.TouchEnded:Connect(function(touch, gameProcessed)
                 if touch == Input then
                     connection:Disconnect();
-                    endConnection:Disconnect();
+                    touchEndConnection:Disconnect();
                 end;
             end);
         end;
@@ -460,6 +485,26 @@ function Library:GiveSignal(Signal)
     -- Only used for signals not attached to library instances, as those should be cleaned up on object destruction by Roblox
     table.insert(Library.Signals, Signal)
 end
+
+function Library:ToggleVisibility()
+    if Library.MainWindow then
+        Library.MainWindow.Visible = not Library.MainWindow.Visible;
+    end;
+end;
+
+function Library:SetupHideToggle(Key)
+    Key = Key or Enum.KeyCode.RightControl;
+    
+    local Connection = InputService.InputBegan:Connect(function(Input, GameProcessed)
+        if GameProcessed then return end;
+        
+        if Input.KeyCode == Key then
+            Library:ToggleVisibility();
+        end;
+    end);
+    
+    table.insert(Library.Signals, Connection);
+end;
 
 function Library:Unload()
     -- Unload all of the signals
@@ -2194,30 +2239,55 @@ do
         end;
 
         SliderInner.InputBegan:Connect(function(Input)
-            if Input.UserInputType == Enum.UserInputType.MouseButton1 and not Library:MouseIsOverOpenedFrame() then
-                local mPos = Mouse.X;
+            if Library:IsTouchInput(Input) and not Library:MouseIsOverOpenedFrame() then
+                local mPos = Input.UserInputType == Enum.UserInputType.Touch and Input.Position.X or Mouse.X;
                 local gPos = Fill.Size.X.Offset;
                 local Diff = mPos - (Fill.AbsolutePosition.X + gPos);
 
-                while InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
-                    local nMPos = Mouse.X;
-                    local nX = math.clamp(gPos + (nMPos - mPos) + Diff, 0, Slider.MaxSize);
-
-                    local nValue = Slider:GetValueFromXOffset(nX);
-                    local OldValue = Slider.Value;
-                    Slider.Value = nValue;
-
-                    Slider:Display();
-
-                    if nValue ~= OldValue then
-                        Library:SafeCallback(Slider.Callback, Slider.Value);
-                        Library:SafeCallback(Slider.Changed, Slider.Value);
+                if Input.UserInputType == Enum.UserInputType.Touch then
+                    local touchConnection;
+                    local endConnection;
+                    
+                    local function UpdateSlider(touchInput)
+                        local nMPos = touchInput.Position.X;
+                        local nX = math.clamp(gPos + (nMPos - mPos) + Diff, 0, Slider.MaxSize);
+                        local nValue = Slider:GetValueFromXOffset(nX);
+                        local OldValue = Slider.Value;
+                        Slider.Value = nValue;
+                        Slider:Display();
+                        if nValue ~= OldValue then
+                            Library:SafeCallback(Slider.Callback, Slider.Value);
+                            Library:SafeCallback(Slider.Changed, Slider.Value);
+                        end;
                     end;
-
-                    RenderStepped:Wait();
+                    
+                    touchConnection = InputService.TouchMoved:Connect(function(touch)
+                        if touch == Input then UpdateSlider(touch); end;
+                    end);
+                    
+                    endConnection = InputService.TouchEnded:Connect(function(touch)
+                        if touch == Input then
+                            touchConnection:Disconnect();
+                            endConnection:Disconnect();
+                            Library:AttemptSave();
+                        end;
+                    end);
+                else
+                    while InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
+                        local nMPos = Mouse.X;
+                        local nX = math.clamp(gPos + (nMPos - mPos) + Diff, 0, Slider.MaxSize);
+                        local nValue = Slider:GetValueFromXOffset(nX);
+                        local OldValue = Slider.Value;
+                        Slider.Value = nValue;
+                        Slider:Display();
+                        if nValue ~= OldValue then
+                            Library:SafeCallback(Slider.Callback, Slider.Value);
+                            Library:SafeCallback(Slider.Changed, Slider.Value);
+                        end;
+                        RenderStepped:Wait();
+                    end;
+                    Library:AttemptSave();
                 end;
-
-                Library:AttemptSave();
             end;
         end);
 
@@ -2510,7 +2580,7 @@ do
                 end;
 
                 ButtonLabel.InputBegan:Connect(function(Input)
-                    if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    if Library:IsTouchInput(Input) then
                         local Try = not Selected;
 
                         if Dropdown:GetActiveValues() == 1 and (not Try) and (not Info.AllowNull) then
@@ -2611,7 +2681,7 @@ do
         end;
 
         DropdownOuter.InputBegan:Connect(function(Input)
-            if Input.UserInputType == Enum.UserInputType.MouseButton1 and not Library:MouseIsOverOpenedFrame() then
+            if Library:IsTouchInput(Input) and not Library:MouseIsOverOpenedFrame() then
                 if ListOuter.Visible then
                     Dropdown:CloseDropdown();
                 else
@@ -3663,6 +3733,7 @@ function Library:CreateWindow(...)
     if Config.AutoShow then task.spawn(Library.Toggle) end
 
     Window.Holder = Outer;
+    Library.MainWindow = Outer;
 
     return Window;
 end;
