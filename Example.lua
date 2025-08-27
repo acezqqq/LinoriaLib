@@ -1,6 +1,6 @@
 -- New example script written by wally
 -- You can suggest changes with a pull request or something
-
+-- https://raw.githubusercontent.com/acezqqq/LinoriaLib/refs/heads/test/Library.lua
 local repo = 'https://raw.githubusercontent.com/acezqqq/LinoriaLib/refs/heads/test/'
 
 local Library = loadstring(game:HttpGet(repo .. 'Library.lua'))()
