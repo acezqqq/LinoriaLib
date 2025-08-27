@@ -2447,8 +2447,28 @@ do
         );
 
         if type(Info.Tooltip) == 'string' then
+            Library:AddToolTip(Info.Tooltip, DropdownOuter)
         end;
-    end;
+
+        local MAX_DROPDOWN_ITEMS = 8;
+
+        local ListOuter = Library:Create('Frame', {
+            BackgroundColor3 = Color3.new(0, 0, 0);
+            BorderColor3 = Color3.new(0, 0, 0);
+            Position = UDim2.fromOffset(0, 0);
+            Size = UDim2.fromOffset(0, 0);
+            Visible = false;
+            ZIndex = 20;
+            Parent = ScreenGui;
+        });
+
+        Library:AddToRegistry(ListOuter, {
+            BorderColor3 = 'Black';
+        });
+
+        local function RecalculateListPosition()
+            ListOuter.Position = UDim2.fromOffset(DropdownOuter.AbsolutePosition.X, DropdownOuter.AbsolutePosition.Y + DropdownOuter.AbsoluteSize.Y)
+        end;
 
         local function RecalculateListSize(YSize)
             ListOuter.Size = UDim2.fromOffset(DropdownOuter.AbsoluteSize.X, YSize or (MAX_DROPDOWN_ITEMS * 20 + 2))
@@ -2844,9 +2864,7 @@ do
 
         return Depbox;
     end;
-end;
 
-do
     BaseGroupbox.__index = Funcs;
     BaseGroupbox.__namecall = function(Table, Key, ...)
         return Funcs[Key](...);
