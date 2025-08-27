@@ -272,11 +272,13 @@ function Library:MakeDraggable(Instance, Cutoff)
                 return;
             end;
 
-            local function UpdatePosition()
-                if Input.UserInputState ~= Enum.UserInputState.End then
+            local isDragging = true;
+            
+            local function UpdatePosition(touchInput)
+                if isDragging then
                     local currentViewport = Camera.ViewportSize;
-                    local newX = Input.Position.X - ObjPos.X + (Instance.Size.X.Offset * Instance.AnchorPoint.X);
-                    local newY = Input.Position.Y - ObjPos.Y + (Instance.Size.Y.Offset * Instance.AnchorPoint.Y);
+                    local newX = touchInput.Position.X - ObjPos.X + (Instance.Size.X.Offset * Instance.AnchorPoint.X);
+                    local newY = touchInput.Position.Y - ObjPos.Y + (Instance.Size.Y.Offset * Instance.AnchorPoint.Y);
                     
                     local minX = -Instance.AbsoluteSize.X * 0.8;
                     local maxX = currentViewport.X - Instance.AbsoluteSize.X * 0.2;
@@ -292,14 +294,15 @@ function Library:MakeDraggable(Instance, Cutoff)
 
             local connection;
             connection = InputService.TouchMoved:Connect(function(touch, gameProcessed)
-                if touch == Input then
-                    UpdatePosition();
+                if touch == Input and isDragging then
+                    UpdatePosition(touch);
                 end;
             end);
 
             local touchEndConnection;
             touchEndConnection = InputService.TouchEnded:Connect(function(touch, gameProcessed)
                 if touch == Input then
+                    isDragging = false;
                     connection:Disconnect();
                     touchEndConnection:Disconnect();
                 end;
@@ -3289,7 +3292,7 @@ function Library:CreateWindow(...)
             BackgroundTransparency = 1;
             BorderSizePixel = 0;
             Position = UDim2.new(0, 8 - 1, 0, 8 - 1);
-            Size = UDim2.new(0.5, -12 + 2, 0, 507 + 2);
+            Size = UDim2.new(0.5, -12 + 2, 1, -16 + 2);
             CanvasSize = UDim2.new(0, 0, 0, 0);
             BottomImage = '';
             TopImage = '';
@@ -3302,7 +3305,7 @@ function Library:CreateWindow(...)
             BackgroundTransparency = 1;
             BorderSizePixel = 0;
             Position = UDim2.new(0.5, 4 + 1, 0, 8 - 1);
-            Size = UDim2.new(0.5, -12 + 2, 0, 507 + 2);
+            Size = UDim2.new(0.5, -12 + 2, 1, -16 + 2);
             CanvasSize = UDim2.new(0, 0, 0, 0);
             BottomImage = '';
             TopImage = '';
