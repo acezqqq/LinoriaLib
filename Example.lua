@@ -382,7 +382,7 @@ SubDepbox:SetupDependencies({
 
 -- Library functions
 -- Sets the watermark visibility
-Library:SetWatermarkVisibility(true)
+Library:SetWatermarkVisibility(false)
 
 -- Example of dynamically-updating watermark with common traits (fps and ping)
 local FrameTimer = tick()
@@ -404,7 +404,7 @@ local WatermarkConnection = game:GetService('RunService').RenderStepped:Connect(
     ));
 end);
 
-Library.KeybindFrame.Visible = true; -- todo: add a function for this
+Library.KeybindFrame.Visible = false; -- todo: add a function for this
 
 Library:OnUnload(function()
     WatermarkConnection:Disconnect()
