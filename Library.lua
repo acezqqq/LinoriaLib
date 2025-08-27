@@ -2844,7 +2844,9 @@ do
 
         return Depbox;
     end;
+end;
 
+do
     BaseGroupbox.__index = Funcs;
     BaseGroupbox.__namecall = function(Table, Key, ...)
         return Funcs[Key](...);
