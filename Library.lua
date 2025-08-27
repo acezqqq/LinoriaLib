@@ -211,7 +211,7 @@ function Library:MakeDraggable(Instance, Cutoff)
     Instance.Active = true;
 
     Instance.InputBegan:Connect(function(Input)
-        if Library:IsTouchInput(Input) then
+        if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
             local InputPos = Input.Position or Vector2.new(Mouse.X, Mouse.Y);
             local ObjPos = Vector2.new(
                 InputPos.X - Instance.AbsolutePosition.X,
