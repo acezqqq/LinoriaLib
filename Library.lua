@@ -235,11 +235,17 @@ function Library:MakeDraggable(Instance, Cutoff)
             end;
 
             while InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
+                local currentViewport = Camera.ViewportSize;
                 local newX = Mouse.X - ObjPos.X + (Instance.Size.X.Offset * Instance.AnchorPoint.X);
                 local newY = Mouse.Y - ObjPos.Y + (Instance.Size.Y.Offset * Instance.AnchorPoint.Y);
                 
-                newX = math.clamp(newX, 0, ViewportSize.X - Instance.AbsoluteSize.X);
-                newY = math.clamp(newY, 0, ViewportSize.Y - Instance.AbsoluteSize.Y);
+                local minX = -Instance.AbsoluteSize.X * 0.8;
+                local maxX = currentViewport.X - Instance.AbsoluteSize.X * 0.2;
+                local minY = -Instance.AbsoluteSize.Y * 0.8;
+                local maxY = currentViewport.Y - Instance.AbsoluteSize.Y * 0.2;
+                
+                newX = math.clamp(newX, minX, maxX);
+                newY = math.clamp(newY, minY, maxY);
                 
                 Instance.Position = UDim2.new(0, newX, 0, newY);
                 RenderStepped:Wait();
@@ -268,11 +274,17 @@ function Library:MakeDraggable(Instance, Cutoff)
 
             local function UpdatePosition()
                 if Input.UserInputState ~= Enum.UserInputState.End then
+                    local currentViewport = Camera.ViewportSize;
                     local newX = Input.Position.X - ObjPos.X + (Instance.Size.X.Offset * Instance.AnchorPoint.X);
                     local newY = Input.Position.Y - ObjPos.Y + (Instance.Size.Y.Offset * Instance.AnchorPoint.Y);
                     
-                    newX = math.clamp(newX, 0, ViewportSize.X - Instance.AbsoluteSize.X);
-                    newY = math.clamp(newY, 0, ViewportSize.Y - Instance.AbsoluteSize.Y);
+                    local minX = -Instance.AbsoluteSize.X * 0.8;
+                    local maxX = currentViewport.X - Instance.AbsoluteSize.X * 0.2;
+                    local minY = -Instance.AbsoluteSize.Y * 0.8;
+                    local maxY = currentViewport.Y - Instance.AbsoluteSize.Y * 0.2;
+                    
+                    newX = math.clamp(newX, minX, maxX);
+                    newY = math.clamp(newY, minY, maxY);
                     
                     Instance.Position = UDim2.new(0, newX, 0, newY);
                 end;
