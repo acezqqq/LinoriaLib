@@ -374,29 +374,29 @@ function Library:AddToolTip(InfoStr, HoverInstance)
 end
 
 function Library:OnHighlight(HighlightInstance, Instance, Properties, PropertiesDefault)
-    HighlightInstance.MouseEnter:Connect(function()
-        local Reg = Library.RegistryMap[Instance];
+    if not IsMobile then
+        HighlightInstance.MouseEnter:Connect(function()
+            local Reg = Library.RegistryMap[Instance];
 
-        for Property, ColorIdx in next, Properties do
-            Instance[Property] = Library[ColorIdx] or ColorIdx;
-
-            if Reg and Reg.Properties[Property] then
-                Reg.Properties[Property] = ColorIdx;
+            for Property, ColorIdx in next, Properties do
+                Instance[Property] = Library[ColorIdx] or ColorIdx;
+                if Reg then
+                    Reg.Properties[Property] = ColorIdx;
+                end;
             end;
-        end;
-    end)
+        end)
 
-    HighlightInstance.MouseLeave:Connect(function()
-        local Reg = Library.RegistryMap[Instance];
+        HighlightInstance.MouseLeave:Connect(function()
+            local Reg = Library.RegistryMap[Instance];
 
-        for Property, ColorIdx in next, PropertiesDefault do
-            Instance[Property] = Library[ColorIdx] or ColorIdx;
-
-            if Reg and Reg.Properties[Property] then
-                Reg.Properties[Property] = ColorIdx;
+            for Property, ColorIdx in next, PropertiesDefault do
+                Instance[Property] = Library[ColorIdx] or ColorIdx;
+                if Reg then
+                    Reg.Properties[Property] = ColorIdx;
+                end;
             end;
-        end;
-    end)
+        end)
+    end
 end;
 
 function Library:MouseIsOverOpenedFrame()
@@ -1662,7 +1662,7 @@ do
                     return false
                 end
 
-                if Input.UserInputType ~= Enum.UserInputType.MouseButton1 then
+                if Input.UserInputType ~= Enum.UserInputType.MouseButton1 and Input.UserInputType ~= Enum.UserInputType.Touch then
                     return false
                 end
 
@@ -3647,7 +3647,7 @@ function Library:CreateWindow(...)
                 end;
 
                 Button.InputBegan:Connect(function(Input)
-                    if Input.UserInputType == Enum.UserInputType.MouseButton1 and not Library:MouseIsOverOpenedFrame() then
+                    if (Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch) and not Library:MouseIsOverOpenedFrame() then
                         Tab:Show();
                         Tab:Resize();
                     end;
@@ -3680,29 +3680,6 @@ function Library:CreateWindow(...)
 
         function Tab:AddRightTabbox(Name)
             return Tab:AddTabbox({ Name = Name, Side = 2; });
-        end;
-
-        function Tab:ShowTab()
-            for _, OtherTab in next, Window.Tabs do
-                OtherTab:HideTab();
-            end;
-
-            Blocker.BackgroundTransparency = 0;
-            TabButton.BackgroundColor3 = Library.MainColor;
-            Library.RegistryMap[TabButton].Properties.BackgroundColor3 = 'MainColor';
-            TabFrame.Visible = true;
-        end;
-
-        function Tab:HideTab()
-            Blocker.BackgroundTransparency = 1;
-            TabButton.BackgroundColor3 = Library.BackgroundColor;
-            Library.RegistryMap[TabButton].Properties.BackgroundColor3 = 'BackgroundColor';
-            TabFrame.Visible = false;
-        end;
-
-        function Tab:SetLayoutOrder(Position)
-            TabButton.LayoutOrder = Position;
-            TabListLayout:ApplyLayout();
         end;
 
         TabButton.InputBegan:Connect(function(Input)
@@ -3813,6 +3790,33 @@ end;
 
 Players.PlayerAdded:Connect(OnPlayerChange);
 Players.PlayerRemoving:Connect(OnPlayerChange);
+
+local MobileToggleUI = Instance.new("ScreenGui")
+local ImageButton = Instance.new("ImageButton")
+local UICorner = Instance.new("UICorner")
+
+MobileToggleUI.Name = "MobileToggleUI"
+MobileToggleUI.Parent = LocalPlayer:WaitForChild("PlayerGui")
+MobileToggleUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+ImageButton.Parent = MobileToggleUI
+ImageButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+ImageButton.BorderColor3 = Color3.fromRGB(0, 0, 0)
+ImageButton.BorderSizePixel = 0
+ImageButton.Position = UDim2.new(0.0373939388, 0, 0.0654127076, 0)
+ImageButton.Size = UDim2.new(0, 52, 0, 51)
+ImageButton.Image = "rbxassetid://83409275146022"
+
+UICorner.Parent = ImageButton
+
+ImageButton.Activated:Connect(function()
+    Library:Toggle()
+    if Library.MainWindow and Library.MainWindow.Visible then
+        ImageButton.Image = "rbxassetid://90299395624996"
+    else
+        ImageButton.Image = "rbxassetid://83409275146022"
+    end
+end)
 
 getgenv().Library = Library
 return Library
