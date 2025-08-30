@@ -59,6 +59,10 @@ local Library = {
     MinTouchSize = MinTouchSize;
     
     MainWindow = nil;
+    
+    IsScrolling = false;
+    ScrollStartTime = 0;
+    ScrollThreshold = 0.1;
 };
 
 local RainbowStep = 0
@@ -178,6 +182,13 @@ end;
 
 function Library:IsTouchInput(Input)
     return Input.UserInputType == Enum.UserInputType.Touch or Input.UserInputType == Enum.UserInputType.MouseButton1;
+end;
+
+function Library:IsValidTouch(Input)
+    if Input.UserInputType == Enum.UserInputType.Touch then
+        return not Library.IsScrolling and (tick() - Library.ScrollStartTime) > Library.ScrollThreshold;
+    end
+    return Input.UserInputType == Enum.UserInputType.MouseButton1;
 end;
 
 function Library:ApplyTextStroke(Inst)
@@ -1666,6 +1677,11 @@ do
                     return false
                 end
 
+                -- Prevent clicks during scrolling
+                if Library.IsScrolling and Input.UserInputType == Enum.UserInputType.Touch then
+                    return false
+                end
+
                 return true
             end
 
@@ -2088,6 +2104,10 @@ do
 
         ToggleRegion.InputBegan:Connect(function(Input)
             if Library:IsTouchInput(Input) and not Library:MouseIsOverOpenedFrame() then
+                if Library.IsScrolling and Input.UserInputType == Enum.UserInputType.Touch then
+                    return
+                end
+                
                 Toggle:SetValue(not Toggle.Value) -- Why was it not like this from the start?
                 Library:AttemptSave();
             end;
@@ -2723,6 +2743,10 @@ do
 
         DropdownOuter.InputBegan:Connect(function(Input)
             if Library:IsTouchInput(Input) and not Library:MouseIsOverOpenedFrame() then
+                if Library.IsScrolling and Input.UserInputType == Enum.UserInputType.Touch then
+                    return
+                end
+                
                 if ListOuter.Visible then
                     Dropdown:CloseDropdown();
                 else
@@ -3760,15 +3784,36 @@ function Library:CreateWindow(...)
         Fading = false;
     end
 
-    Library:GiveSignal(InputService.InputBegan:Connect(function(Input, Processed)
-        if type(Library.ToggleKeybind) == 'table' and Library.ToggleKeybind.Type == 'KeyPicker' then
-            if Input.UserInputType == Enum.UserInputType.Keyboard and Input.KeyCode.Name == Library.ToggleKeybind.Value then
-                task.spawn(Library.Toggle)
-            end
-        elseif Input.KeyCode == Enum.KeyCode.RightControl or (Input.KeyCode == Enum.KeyCode.RightShift and (not Processed)) then
-            task.spawn(Library.Toggle)
+    Library:GiveSignal(InputService.InputBegan:Connect(function(Input)
+        if Input.KeyCode == Enum.KeyCode.LeftControl or Input.KeyCode == Enum.KeyCode.RightControl then
+            Library.KeybindFrame = true;
+        end;
+        
+        if Input.UserInputType == Enum.UserInputType.Touch then
+            Library.ScrollStartTime = tick()
+            Library.IsScrolling = false
         end
-    end))
+    end));
+
+    Library:GiveSignal(InputService.InputEnded:Connect(function(Input)
+        if Input.KeyCode == Enum.KeyCode.LeftControl or Input.KeyCode == Enum.KeyCode.RightControl then
+            Library.KeybindFrame = false;
+        end;
+        
+        if Input.UserInputType == Enum.UserInputType.Touch then
+            task.wait(0.05)
+            Library.IsScrolling = false
+        end
+    end));
+    
+    Library:GiveSignal(InputService.TouchMoved:Connect(function(touch, gameProcessed)
+        if not gameProcessed then
+            local currentTime = tick()
+            if currentTime - Library.ScrollStartTime > Library.ScrollThreshold then
+                Library.IsScrolling = true
+            end
+        end
+    end));
 
     if Config.AutoShow then task.spawn(Library.Toggle) end
 
@@ -3794,6 +3839,7 @@ Players.PlayerRemoving:Connect(OnPlayerChange);
 local MobileToggleUI = Instance.new("ScreenGui")
 local ImageButton = Instance.new("ImageButton")
 local UICorner = Instance.new("UICorner")
+local UIStroke = Instance.new("UIStroke")
 
 MobileToggleUI.Name = "MobileToggleUI"
 MobileToggleUI.Parent = LocalPlayer:WaitForChild("PlayerGui")
@@ -3808,6 +3854,11 @@ ImageButton.Size = UDim2.new(0, 52, 0, 51)
 ImageButton.Image = "rbxassetid://83409275146022"
 
 UICorner.Parent = ImageButton
+
+UIStroke.Parent = ImageButton
+UIStroke.Color = Color3.new(0, 0, 0)
+UIStroke.LineJoinMode = Enum.LineJoinMode.Miter
+UIStroke.Thickness = 2
 
 ImageButton.Activated:Connect(function()
     Library:Toggle()
