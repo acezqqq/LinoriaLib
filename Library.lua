@@ -537,7 +537,12 @@ function Library:SetupHideToggle(Key)
 end;
 
 function Library:Unload()
-    -- Unload all of the signals
+    if Library.MobileToggleUI then
+        Library.MobileToggleUI:Destroy()
+    end
+    if ScreenGui then
+        ScreenGui:Destroy()
+    end
     for Idx = #Library.Signals, 1, -1 do
         local Connection = table.remove(Library.Signals, Idx)
         Connection:Disconnect()
@@ -2295,6 +2300,9 @@ do
 
         SliderInner.InputBegan:Connect(function(Input)
             if Library:IsTouchInput(Input) and not Library:MouseIsOverOpenedFrame() then
+                if Library.IsScrolling and Input.UserInputType == Enum.UserInputType.Touch then
+                    return
+                end
                 local mPos = Input.UserInputType == Enum.UserInputType.Touch and Input.Position.X or Mouse.X;
                 local gPos = Fill.Size.X.Offset;
                 local Diff = mPos - (Fill.AbsolutePosition.X + gPos);
@@ -3844,6 +3852,8 @@ local UIStroke = Instance.new("UIStroke")
 MobileToggleUI.Name = "MobileToggleUI"
 MobileToggleUI.Parent = LocalPlayer:WaitForChild("PlayerGui")
 MobileToggleUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+Library.MobileToggleUI = MobileToggleUI
 
 ImageButton.Parent = MobileToggleUI
 ImageButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
